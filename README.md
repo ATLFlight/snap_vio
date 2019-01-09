@@ -8,6 +8,9 @@ snap_vio wraps mvVISLAM from the machine vision library, providing a ROS interfa
 - [snap_cpa](https://github.com/ATLFlight/snap_cpa)
 - [snap_imu](https://github.com/ATLFlight/snap_imu)
 
+## Building
+For snapdragon/qualcomm flight, use standard catkin_make.  For QFlight Pro, use the instructions here: [QFlight Pro Buildi Instructions](https://github.com/ATLFlight/QFlightProDocs/blob/master/RosSoftware.md).
+
 ## Run It!
 snap_vio needs a few things to work:
 - image msgs from a camera (sensor_msgs/Image via image_transport to "image_raw")
