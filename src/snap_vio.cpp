@@ -344,7 +344,8 @@ bool SnapVio::InitializeVio() {
     vislam_params_.limitedIMUbWtrigger,
     vislam_params_.staticMaskFilename.c_str(),
     vislam_params_.gpsImuTimeAlignment,
-    &vislam_params_.tba[0]
+    &vislam_params_.tba[0],
+    true
   );
   if (vislam_ptr_ == nullptr) {
     ROS_ERROR_STREAM("Could not initialize mvVISLAM object.");
