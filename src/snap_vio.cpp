@@ -93,6 +93,10 @@ SnapVio::SnapVio(ros::NodeHandle nh, ros::NodeHandle pnh)
   latest_time_alignment_ = ros::Duration(vislam_params_.delta);
   ROS_INFO_STREAM("Initial Time alignment: " << latest_time_alignment_ );
 
+  pnh_.param<std::string>("odom_frame_id", odom_frame_, "odom");
+  pnh_.param<std::string>("grav_frame_id", grav_frame_, "grav");
+  pnh_.param<std::string>("imu_start_frame_id", imu_start_frame_, "imu_start");
+
   tfListener = new tf2_ros::TransformListener(tfBuffer);
 
   vio_pose_publisher_ = nh_.advertise<geometry_msgs::PoseStamped>("vio/pose",1);
@@ -361,13 +365,13 @@ void SnapVio::PublishMapPoints(std::vector<mvVISLAMMapPoint>& vio_points,
 
   snap_msgs::MapPointArray points_msg;
   points_msg.map_points.reserve(vio_points.size());
-  points_msg.header.frame_id = "imu_start";
+  points_msg.header.frame_id = imu_start_frame_;
   points_msg.header.stamp = image_timestamp;
   points_msg.header.seq = vio_frame_id;
 
   sensor_msgs::PointCloud cloud_msg;
   cloud_msg.points.reserve(vio_points.size());
-  cloud_msg.header.frame_id = "imu_start";
+  cloud_msg.header.frame_id = imu_start_frame_;
   cloud_msg.header.stamp = image_timestamp;
   cloud_msg.header.seq = vio_frame_id;
 
@@ -423,8 +427,8 @@ void SnapVio::PublishVioData(mvVISLAMPose& vio_pose, int64_t vio_frame_id,
     odom_to_grav.transform.translation.z = 0;
     tf2::Quaternion q_imu( tf2::Vector3(0.0, 1.0, 0.0), 3.14159);
     tf2::convert(q_imu, odom_to_grav.transform.rotation);
-    odom_to_grav.child_frame_id = "grav";
-    odom_to_grav.header.frame_id = "odom";
+    odom_to_grav.child_frame_id = grav_frame_;
+    odom_to_grav.header.frame_id = odom_frame_;
     odom_to_grav.header.stamp = vio_timestamp;
     transforms.push_back(odom_to_grav);
   }
@@ -438,20 +442,20 @@ void SnapVio::PublishVioData(mvVISLAMPose& vio_pose, int64_t vio_frame_id,
   if(snav_mode_)
   {
     tf2::convert(q_grav.inverse(),grav_to_imu_start.transform.rotation);
-    grav_to_imu_start.child_frame_id = "grav";
-    grav_to_imu_start.header.frame_id = "imu_start";
+    grav_to_imu_start.child_frame_id = grav_frame_;
+    grav_to_imu_start.header.frame_id = imu_start_frame_;
   }
   else
   {
     tf2::convert(q_grav,grav_to_imu_start.transform.rotation);
-    grav_to_imu_start.child_frame_id = "imu_start";
-    grav_to_imu_start.header.frame_id = "grav";
+    grav_to_imu_start.child_frame_id = imu_start_frame_;
+    grav_to_imu_start.header.frame_id = grav_frame_;
   }
   grav_to_imu_start.header.stamp = vio_timestamp;
   transforms.push_back(grav_to_imu_start);
 
   geometry_msgs::PoseStamped pose_msg;
-  pose_msg.header.frame_id = "imu_start";
+  pose_msg.header.frame_id = imu_start_frame_;
   pose_msg.header.stamp = vio_timestamp;
   pose_msg.header.seq = vio_frame_id;
   // translate VIO pose to ROS pose
@@ -484,8 +488,8 @@ void SnapVio::PublishVioData(mvVISLAMPose& vio_pose, int64_t vio_frame_id,
   imu_start_to_imu.transform.rotation.y = pose_msg.pose.orientation.y;
   imu_start_to_imu.transform.rotation.z = pose_msg.pose.orientation.z;
   imu_start_to_imu.transform.rotation.w = pose_msg.pose.orientation.w;
-  imu_start_to_imu.child_frame_id = "imu";
-  imu_start_to_imu.header.frame_id = "imu_start";
+  imu_start_to_imu.child_frame_id = imu_frame_;
+  imu_start_to_imu.header.frame_id = imu_start_frame_;
   imu_start_to_imu.header.stamp = vio_timestamp;
 
   if(snav_mode_)
@@ -495,8 +499,8 @@ void SnapVio::PublishVioData(mvVISLAMPose& vio_pose, int64_t vio_frame_id,
     vio_tf_inv = vio_tf.inverse();
     geometry_msgs::TransformStamped imu_to_imu_start;
     tf2::convert(vio_tf_inv, imu_to_imu_start.transform);
-    imu_to_imu_start.child_frame_id = "imu_start";
-    imu_to_imu_start.header.frame_id = "imu";
+    imu_to_imu_start.child_frame_id = imu_start_frame_;
+    imu_to_imu_start.header.frame_id = imu_frame_;
     imu_to_imu_start.header.stamp = vio_timestamp;
     transforms.push_back(imu_to_imu_start);
   }
@@ -520,8 +524,8 @@ void SnapVio::PublishVioData(mvVISLAMPose& vio_pose, int64_t vio_frame_id,
 
   nav_msgs::Odometry odom_msg;
   odom_msg.header.stamp = vio_timestamp;
-  odom_msg.header.frame_id = "imu_start";
-  odom_msg.child_frame_id = "imu";
+  odom_msg.header.frame_id = imu_start_frame_;
+  odom_msg.child_frame_id = imu_frame_;
   odom_msg.pose.pose = pose_msg.pose;
   odom_msg.twist.twist.linear.x = vio_pose.velocity[0];
   odom_msg.twist.twist.linear.y = vio_pose.velocity[1];
@@ -547,7 +551,7 @@ void SnapVio::PublishVioData(mvVISLAMPose& vio_pose, int64_t vio_frame_id,
 
   // Internal States
   snap_msgs::InternalStates states_msg;
-  states_msg.header.frame_id = "imu_start";
+  states_msg.header.frame_id = imu_start_frame_;
   states_msg.header.stamp = vio_timestamp;
   states_msg.header.seq = vio_frame_id;
   states_msg.snav_mode = snav_mode_;

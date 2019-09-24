@@ -171,6 +171,9 @@ private:
 
   std::string camera_frame_;
   std::string imu_frame_;
+  std::string odom_frame_;
+  std::string grav_frame_;
+  std::string imu_start_frame_;
 
   tf2_ros::Buffer tfBuffer;
   tf2_ros::TransformListener * tfListener;
